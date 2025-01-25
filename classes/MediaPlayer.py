@@ -1,5 +1,7 @@
 import musicbrainzngs as m
 import libdiscid
+from classes.MediaPlayer import MediaPlayer
+from classes.MediaPlayerInfo import MediaPlayerInfo, CurrentTrackInfo, TrackInfo
 
 class MediaPlayer:
   """
@@ -29,8 +31,49 @@ class MediaPlayer:
 
   def get_current_info(self, status=True, cur_track_info=True, volume=True, track_list=False, library=False):
     info = MediaPlayerInfo()
+    if self.is_running:
+      if status:
+        status_res = self._run_command('get_property', 'pause')
+        info.status = 'paused' if status_res else 'playing'
+      if cur_track_info:
+        info.cur_track_info = CurrentTrackInfo()
+        if self._current_disk_type == MediaPlayer.DiskType.AUDIO_CD:
+          chapter_res = self._run_command('get_property', 'chapter')
+          self._current_track = chapter_res
+          info.cur_track_info.track_number = chapter_res
+        elif self._current_disk_type == MediaPlayer.DiskType.MP3_CD:
+          playlist_pos_res = self._run_command('get_property', 'playlist-pos')
+          self._current_track = playlist_pos_res
+          info.cur_track_info.track_number = playlist_pos_res
+        if self._current_track is not None:
+          time_res = self._run_command('get_property', 'time-pos')
+          if time_res is not None:
+            time_millis = time_res * 1000
+            if self._current_disk_type == MediaPlayer.DiskType.AUDIO_CD:
+              for track in self._current_track_list[0:self._current_track]:
+                time_millis -= track.total_time
+            info.cur_track_info.cur_time = time_millis
+      if volume:
+        vol = self._run_command('get_property', 'volume')
+        if vol is not None:
+          self._volume = vol
+          info.volume = vol
+      if track_list and self._current_track_list is not None:
+        info.track_list = list(map(lambda x: x.as_dict(), self._current_track_list))
+      if library and self._media_library is not None:
+        info.library = self._media_library
+    else:
+      info.volume = self._volume
+      info.status = 'waitingForCD'
 
+    return info
 
+  def poll_info(self):
+    try:
+      info_event = self._info_events.get_nowait()
+      return info_event
+    except queue.Empty:
+      return None
 
 class CD:
   """
