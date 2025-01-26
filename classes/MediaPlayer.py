@@ -1,5 +1,9 @@
+import queue
+import subprocess
+import json
 import musicbrainzngs as m
 import libdiscid
+from time import sleep
 from enum import Enum
 from classes.MediaPlayerInfo import MediaPlayerInfo, CurrentTrackInfo, TrackInfo
 
@@ -74,6 +78,70 @@ class MediaPlayer:
       return info_event
     except queue.Empty:
       return None
+
+  def try_play_cd(self):
+    """
+    Tries to play CD in CD drive, if there is any (or USB drive)
+    Sets the current media library branch type and index attribute and puts infor into the info queue
+    :return: None
+    """
+    self._info_events = queue.Queue()
+    if not self.is_running:
+      cd_type = self._check_for_cd()
+      if cd_type is None:
+        return
+      if cd_type is MediaPlayer.DiskType.AUDIO_CD:
+        print('playing audio CD')
+        # Todo: Play the CD here
+      elif cd_type == MediaPlayer.DiskType.MP3_CD:
+        print('playing MP3 CD')
+        # Todo: Play the MP3 CD here
+        print('MP3 CD not yet supported')
+        self._current_media_library_branch_type_index = (MediaPlayer.BranchType.FOLDERS, 0)
+      info = self.get_current_info(True, True, True, True, True)
+      # fill cur_track_info with zeros, because it may not be initialised yet (loading)
+      info.cur_track_info = CurrentTrackInfo()
+      info.cur_track_info.cur_time = 0
+      info.cur_track_info.track_number = 0
+      self._info_events.put(info)
+
+  def _check_for_cd(self):
+    self._current_disk_type = None
+    self._current_track_list = []
+    self._cd.load_cd_info()
+    df = []
+    if CD.is_cd_inserted():
+      if self._cd.numtracks > 1:
+        # CD that isn't audio CD has 1 track
+        self._current_disk_type = MediaPlayer.DiskType.AUDIO_CD
+        try:
+          artist = self._cd._cd_info['disc']['release-list'][0]['artist-credit-phrase']
+          album = self._cd._cd_info['disc']['release-list'][0]['title']
+          self._current_track_list = list(map(
+            lambda x, y: TrackInfo(y, artist, album, x['recording']['title']),
+            self._cd._cd_info['disc']['release-list'][0]['medium-list'][0]['track-list'],
+            self._cd._track_lengths))
+        except:
+          self._current_track_list = list(map(lambda x: TrackInfo(x), self._cd.track_lengths))
+      else:
+        print('Not an audio CD')
+    print('No CD Found')
+    return self._current_disk_type
+
+  @property
+  def is_running(self):
+    # Todo: Check is running
+    return False
+
+  @property
+  def currnet_track_list(self):
+    return self._current_track_list
+
+
+
+
+
+
 
 class CD:
   """
