@@ -1,6 +1,6 @@
 import musicbrainzngs as m
 import libdiscid
-from classes.MediaPlayer import MediaPlayer
+from enum import Enum
 from classes.MediaPlayerInfo import MediaPlayerInfo, CurrentTrackInfo, TrackInfo
 
 class MediaPlayer:
@@ -130,7 +130,7 @@ class CD:
   def is_cd_inserted():
     try:
       subprocess.check_output(['cd-discid', '--musicbrainz'])
-    except subprocess.CalledProcessError
+    except subprocess.CalledProcessError:
       return False
     return True
 

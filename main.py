@@ -3,6 +3,7 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 import logging
 from classes.MediaPlayerConfig import MediaPlayerConfig
+from classes.MediaPlayer import MediaPlayer
 
 config = MediaPlayerConfig('media_player.conf')
 
